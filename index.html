@@ -295,7 +295,7 @@
       <h2>Level of Effort vs. <em>Impact to Self</em></h2>
       <p>A tool to help you find things you can do — even when energy is low. Each dot is a self care activity. The further left, the less effort it takes. The higher up, the more it can lift your day.</p>
     </div>
-    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:16px;">
+    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:12px;">
       <button class="btn btn-ghost" id="btn-save-pdf" style="font-size:0.72rem; padding:7px 16px; white-space:nowrap;">⬇ Save as PDF</button>
       <div class="legend" id="legend"></div>
     </div>
@@ -396,6 +396,15 @@ const BLURBS = {
   Spirit: "Connecting to something larger than yourself — nature, meaning, gratitude, and the quiet practices that ground you.",
   Heart:  "Nurturing your emotional world through the relationships, boundaries, and kindness that keep you feeling held.",
 };
+
+const ENERGY_LEVELS = [
+  { id: "empty",    label: "Running on Empty", range: [0,  20],  color: "#faeaec", textColor: "#c94c5a" },
+  { id: "low",      label: "Low Energy",        range: [20, 40],  color: "#f9f4e3", textColor: "#c9a84c" },
+  { id: "moderate", label: "Moderate Energy",   range: [40, 60],  color: "#eaf2f9", textColor: "#6e9abf" },
+  { id: "good",     label: "Feeling Good",      range: [60, 100], color: "#eef6f1", textColor: "#7aac8f" },
+];
+
+let activeEnergyLevels = new Set(ENERGY_LEVELS.map(e => e.id));
 let activeCategories = new Set(CATS);
 let chartReady = false;
 
@@ -606,6 +615,11 @@ function renderTable() {
 }
 
 // ── CHART ──
+function dotOpacity(d) {
+  const lv = ENERGY_LEVELS.find(e => d.effort >= e.range[0] && d.effort < e.range[1]) || ENERGY_LEVELS[ENERGY_LEVELS.length-1];
+  return (activeCategories.has(d.category) && activeEnergyLevels.has(lv.id)) ? 0.82 : 0.06;
+}
+
 function renderChart() {
   const container = document.getElementById("chart-container");
   container.innerHTML = "";
@@ -631,6 +645,35 @@ function renderChart() {
 
   const x = d3.scaleLinear().domain([0, xMax]).range([0, w]);
   const y = d3.scaleLinear().domain([0, yMax]).range([h, 0]);
+
+  // ── ENERGY BANDS (background) ──
+  ENERGY_LEVELS.forEach(level => {
+    const bx1 = x(level.range[0]);
+    const bx2 = x(Math.min(level.range[1], xMax));
+    const bandW = Math.max(0, bx2 - bx1);
+    const isActive = activeEnergyLevels.has(level.id);
+
+    // Shaded background rect
+    g.append("rect")
+      .attr("class", `energy-band energy-band-${level.id}`)
+      .attr("x", bx1).attr("y", 0)
+      .attr("width", bandW).attr("height", h)
+      .attr("fill", level.color)
+      .attr("opacity", isActive ? 1 : 0.15);
+
+    // Band label at top
+    g.append("text")
+      .attr("class", `energy-band-label energy-band-label-${level.id}`)
+      .attr("x", bx1 + bandW / 2).attr("y", -8)
+      .attr("text-anchor", "middle")
+      .attr("font-family", "'DM Sans', sans-serif")
+      .attr("font-size", 9)
+      .attr("font-weight", "500")
+      .attr("letter-spacing", "0.06em")
+      .attr("fill", level.textColor)
+      .attr("opacity", isActive ? 0.9 : 0.2)
+      .text(level.label.toUpperCase());
+  });
 
   // Grid
   g.append("g").attr("class","grid").attr("transform",`translate(0,${h})`)
@@ -708,7 +751,7 @@ function renderChart() {
       isDragging = false;
       d3.select(this).classed("dragging",false)
         .transition().duration(100).attr("r", DOT_R)
-        .attr("opacity", activeCategories.has(d.category) ? 0.82 : 0.06);
+        .attr("opacity", dotOpacity(d));
       dragLabel.transition().duration(200).attr("opacity",0);
 
       // Move the matching dot-label to sit beside the dot's new position
@@ -733,7 +776,7 @@ function renderChart() {
 
   dots.transition().delay((_,i) => i*10).duration(350)
     .attr("r", DOT_R)
-    .attr("opacity", d => activeCategories.has(d.category) ? 0.82 : 0.06);
+    .attr("opacity", d => dotOpacity(d));
 
   // ── GROUPED TOOLTIP ──
   // Find all activities that share the same true (effort, impact) position
@@ -770,7 +813,7 @@ function renderChart() {
       if (isDragging) return;
       d3.select(this).transition().duration(80)
         .attr("r", DOT_R)
-        .attr("opacity", activeCategories.has(d.category) ? 0.82 : 0.06);
+        .attr("opacity", dotOpacity(d));
       tip.classList.remove("visible");
     });
 
@@ -836,7 +879,9 @@ function renderChart() {
       .attr("opacity", 0)
       .attr("fill", COLORS[d.category])
       .transition().delay(300).duration(250)
-      .attr("opacity", activeCategories.has(d.category) ? 0.8 : 0.05);
+      .attr("opacity", activeCategories.has(d.category) && activeEnergyLevels.has(
+        (ENERGY_LEVELS.find(e => d.effort >= e.range[0] && d.effort < e.range[1]) || ENERGY_LEVELS[ENERGY_LEVELS.length-1]).id
+      ) ? 0.8 : 0.05);
 
     labelBoxes.push(chosen.box);
   });
@@ -1122,6 +1167,64 @@ function exportPDF() {
 }
 
 document.getElementById("btn-save-pdf").addEventListener("click", exportPDF);
+// ── ENERGY LEGEND ──
+function buildEnergyLegend() {
+  const el = document.getElementById("energy-legend");
+  const lt = document.getElementById("legend-tip");
+
+  ENERGY_LEVELS.forEach(level => {
+    const item = document.createElement("div");
+    item.className = "legend-item active";
+    item.dataset.energy = level.id;
+    item.style.color = level.textColor;
+    item.innerHTML = `<div class="legend-dot" style="background:${level.textColor}"></div>${level.label}`;
+
+    item.addEventListener("click", () => {
+      if (activeEnergyLevels.has(level.id)) {
+        if (activeEnergyLevels.size === 1) return;
+        activeEnergyLevels.delete(level.id);
+      } else {
+        activeEnergyLevels.add(level.id);
+      }
+      updateEnergyLegendState();
+      ENERGY_LEVELS.forEach(l => {
+        const isActive = activeEnergyLevels.has(l.id);
+        d3.selectAll(`.energy-band-${l.id}`).transition().duration(200).attr("opacity", isActive ? 1 : 0.15);
+        d3.selectAll(`.energy-band-label-${l.id}`).transition().duration(200).attr("opacity", isActive ? 0.9 : 0.2);
+      });
+      d3.selectAll(".dot").transition().duration(200).attr("opacity", d => dotOpacity(d));
+      d3.selectAll(".dot-label").transition().duration(200).attr("opacity", d => {
+        if (!d) return 0.05;
+        const lv = ENERGY_LEVELS.find(e => d.effort >= e.range[0] && d.effort < e.range[1]) || ENERGY_LEVELS[ENERGY_LEVELS.length-1];
+        return (activeCategories.has(d.category) && activeEnergyLevels.has(lv.id)) ? 0.8 : 0.05;
+      });
+    });
+
+    item.addEventListener("mouseenter", e => {
+      lt.innerHTML = `<div class="lt-cat" style="color:${level.textColor}">${level.label}</div>Effort range: ${level.range[0]}–${level.range[1]}`;
+      lt.classList.add("visible");
+      moveLt(e);
+    });
+    item.addEventListener("mousemove", moveLt);
+    item.addEventListener("mouseleave", () => lt.classList.remove("visible"));
+
+    el.appendChild(item);
+  });
+
+  function moveLt(e) {
+    lt.style.left = `${Math.min(e.clientX + 12, window.innerWidth - 240)}px`;
+    lt.style.top  = `${Math.max(e.clientY - lt.offsetHeight - 10, 8)}px`;
+  }
+}
+
+function updateEnergyLegendState() {
+  document.querySelectorAll("#energy-legend .legend-item").forEach(el => {
+    const active = activeEnergyLevels.has(el.dataset.energy);
+    el.classList.toggle("active", active);
+    el.classList.toggle("dimmed", !active);
+  });
+}
+
 function buildLegend() {
   const el = document.getElementById("legend");
   const lt = document.getElementById("legend-tip");
@@ -1140,9 +1243,13 @@ function buildLegend() {
       } else { activeCategories.add(cat); }
       updateLegendState();
       d3.selectAll(".dot").transition().duration(200)
-        .attr("opacity", d => activeCategories.has(d.category) ? 0.82 : 0.06);
+        .attr("opacity", d => dotOpacity(d));
       d3.selectAll(".dot-label").transition().duration(200)
-        .attr("opacity", d => activeCategories.has(d.category) ? 0.8 : 0.05);
+        .attr("opacity", d => {
+          if (!d) return 0.05;
+          const el = ENERGY_LEVELS.find(e => d.effort >= e.range[0] && d.effort < e.range[1]) || ENERGY_LEVELS[ENERGY_LEVELS.length-1];
+          return (activeCategories.has(d.category) && activeEnergyLevels.has(el.id)) ? 0.8 : 0.05;
+        });
     });
 
     // Blurb tooltip on hover
