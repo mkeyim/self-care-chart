@@ -6,6 +6,7 @@
   <title>Self Care Map</title>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     :root {
@@ -310,7 +311,7 @@
   <div class="data-header">
     <div>
       <h2><em>Self Care</em> Map</h2>
-      <p>Each activity belongs to one wellness category. Use <kbd>Tab</kbd> to move between cells, <kbd>Shift+Tab</kbd> to go back. Sliders snap to increments of 5.</p>
+      <p>Each activity belongs to one wellness category. Use <kbd>Tab</kbd> to move between cells, <kbd>Shift+Tab</kbd> to go back.</p>
     </div>
     <div class="data-actions">
       <button class="btn btn-ghost" id="btn-reload">↻ Reload from Sheet</button>
@@ -351,49 +352,42 @@ const CATS   = ["Body","Mind","Spirit","Heart"];
 
 // Flattened seed: one row = one activity with ONE category
 const SEED = [
-  {activity:"Pet the Cat",        effort:5,  category:"Body",   impact:10},
-  {activity:"Deep Breathing",     effort:10, category:"Spirit", impact:10},
-  {activity:"Sit Outside",        effort:10, category:"Spirit", impact:5},
-  {activity:"Garden Walk",        effort:10, category:"Mind",   impact:0},
-  {activity:"Hair Mask",          effort:15, category:"Mind",   impact:0},
-  {activity:"Play Piano",         effort:15, category:"Spirit", impact:5},
-  {activity:"Pick Flowers",       effort:15, category:"Mind",   impact:5},
-  {activity:"Video Games",        effort:15, category:"Mind",   impact:0},
-  {activity:"Get Dressed Up",     effort:20, category:"Spirit", impact:10},
-  {activity:"Watch Comedy",       effort:20, category:"Heart",  impact:5},
-  {activity:"Take a Walk",        effort:20, category:"Spirit", impact:5},
-  {activity:"Hot Shower",         effort:20, category:"Mind",   impact:0},
-  {activity:"Positive Self Talk", effort:10, category:"Spirit", impact:5},
-  {activity:"Dine Out",           effort:25, category:"Mind",   impact:5},
-  {activity:"Stretch",            effort:25, category:"Spirit", impact:5},
-  {activity:"Read a Book",        effort:25, category:"Mind",   impact:5},
-  {activity:"Nourishing Salad",   effort:25, category:"Body",   impact:20},
-  {activity:"Tidy Up",            effort:25, category:"Mind",   impact:5},
-  {activity:"Specialty Groceries",effort:30, category:"Spirit", impact:5},
-  {activity:"Quality Time",       effort:30, category:"Heart",  impact:60},
-  {activity:"See Therapist",      effort:35, category:"Mind",   impact:5},
-  {activity:"Do Puzzles",         effort:30, category:"Mind",   impact:0},
-  {activity:"Take a Nap",         effort:30, category:"Body",   impact:25},
-  {activity:"Yoga Class",         effort:35, category:"Spirit", impact:5},
-  {activity:"Knit Something",     effort:35, category:"Mind",   impact:5},
-  {activity:"Farmers Market",     effort:40, category:"Spirit", impact:10},
-  {activity:"Favourite Meal",     effort:45, category:"Mind",   impact:0},
-  {activity:"Pamper Treatment",   effort:45, category:"Spirit", impact:5},
-  {activity:"Get a Massage",      effort:55, category:"Body",   impact:30},
-  {activity:"Dinner with Friend", effort:55, category:"Heart",  impact:40},
-  {activity:"Have a Picnic",      effort:60, category:"Spirit", impact:35},
-  {activity:"Strength Workout",   effort:60, category:"Body",   impact:50},
-  {activity:"Indoor Cycle",       effort:60, category:"Body",   impact:55},
-  {activity:"New Workout Class",  effort:65, category:"Body",   impact:65},
-  {activity:"See an Event",       effort:65, category:"Spirit", impact:25},
-  {activity:"Cook New Recipe",    effort:65, category:"Mind",   impact:5},
-  {activity:"Join Craft Class",   effort:70, category:"Spirit", impact:35},
-  {activity:"Go Running",         effort:70, category:"Body",   impact:70},
-  {activity:"Weekend Getaway",    effort:75, category:"Spirit", impact:65},
-  {activity:"Go Hiking",          effort:75, category:"Body",   impact:55},
-  {activity:"Spa Day",            effort:75, category:"Heart",  impact:60},
-  {activity:"Take PTO",           effort:80, category:"Body",   impact:70},
-  {activity:"Try New Sport",      effort:80, category:"Body",   impact:25},
+  {activity:"Pet a Cat",            effort:5,  category:"Spirit", impact:10},
+  {activity:"Deep Breathing",       effort:10, category:"Mind",   impact:10},
+  {activity:"Sit Outside",          effort:10, category:"Spirit", impact:15},
+  {activity:"Garden Walk",          effort:10, category:"Spirit", impact:25},
+  {activity:"Hair Mask",            effort:15, category:"Spirit", impact:10},
+  {activity:"Play Piano",           effort:15, category:"Mind",   impact:15},
+  {activity:"Pick Flowers",         effort:15, category:"Spirit", impact:35},
+  {activity:"Video Games",          effort:15, category:"Mind",   impact:20},
+  {activity:"Get Dressed Up",       effort:20, category:"Spirit", impact:10},
+  {activity:"Take a Walk",          effort:20, category:"Body",   impact:45},
+  {activity:"Hot Shower",           effort:20, category:"Mind",   impact:10},
+  {activity:"Positive Self Talk",   effort:10, category:"Heart",  impact:31},
+  {activity:"Dine Out",             effort:25, category:"Spirit", impact:40},
+  {activity:"Stretch",              effort:25, category:"Body",   impact:15},
+  {activity:"Read a Book",          effort:25, category:"Mind",   impact:33},
+  {activity:"Eat a Nourishing Meal",effort:25, category:"Body",   impact:20},
+  {activity:"Tidy Up",              effort:25, category:"Spirit", impact:42},
+  {activity:"Get Specialty Groceries",effort:30,category:"Spirit",impact:27},
+  {activity:"Talk to Therapist",    effort:35, category:"Heart",  impact:36},
+  {activity:"Do a Puzzle",          effort:30, category:"Mind",   impact:10},
+  {activity:"Take a Nap",           effort:30, category:"Body",   impact:40},
+  {activity:"Yoga Class",           effort:35, category:"Spirit", impact:25},
+  {activity:"Go to a Market",       effort:40, category:"Spirit", impact:28},
+  {activity:"Eat Favourite Meal",   effort:45, category:"Spirit", impact:20},
+  {activity:"Get a Massage",        effort:55, category:"Body",   impact:30},
+  {activity:"See a Friend",         effort:55, category:"Heart",  impact:60},
+  {activity:"Have a Picnic",        effort:60, category:"Spirit", impact:40},
+  {activity:"Strength Workout",     effort:60, category:"Body",   impact:50},
+  {activity:"Indoor Cycle",         effort:60, category:"Body",   impact:55},
+  {activity:"New Workout Class",    effort:65, category:"Body",   impact:65},
+  {activity:"Cook New Recipe",      effort:65, category:"Spirit", impact:45},
+  {activity:"Join Craft Class",     effort:70, category:"Mind",   impact:33},
+  {activity:"Go Running",           effort:70, category:"Body",   impact:70},
+  {activity:"Weekend Getaway",      effort:75, category:"Spirit", impact:65},
+  {activity:"Go Hiking",            effort:75, category:"Spirit", impact:55},
+  {activity:"Take PTO",             effort:80, category:"Body",   impact:70},
 ];
 
 const BLURBS = {
@@ -409,7 +403,23 @@ let chartReady = false;
 function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 function setStatus(msg) { document.getElementById("status-text").textContent = msg; }
 
-function snap5(n) { return Math.round(n / 5) * 5; }
+function parsePapa(rows) {
+  const out = [];
+  rows.forEach(r => {
+    const activity = r["Activity"] || Object.values(r)[0] || "";
+    if (!activity) return;
+    const effort = +r["Level of Effort"] || 0;
+    for (const cat of CATS) {
+      const val = +r[cat];
+      if (val > 0) {
+        out.push({ activity, effort, category: cat, impact: val });
+        return;
+      }
+    }
+    out.push({ activity, effort, category: "Body", impact: 0 });
+  });
+  return out;
+}
 
 function parseCsv(text) {
   const rows = d3.csvParse(text);
@@ -417,9 +427,9 @@ function parseCsv(text) {
   rows.forEach(r => {
     const activity = r["Activity"] || Object.values(r)[0] || "";
     if (!activity) return;
-    const effort = snap5(+r["Level of Effort"] || 0);
+    const effort = +r["Level of Effort"] || 0;
     for (const cat of CATS) {
-      const val = snap5(+r[cat]);
+      const val = +r[cat];
       if (val > 0) {
         out.push({ activity, effort, category: cat, impact: val });
         return;
@@ -432,32 +442,8 @@ function parseCsv(text) {
 
 // ── LOAD ──
 async function loadData() {
-  setStatus("Fetching from Google Sheets…");
-
-  // Try fetching via a CORS proxy, then fall back to embedded seed data
-  const proxies = [
-    `https://corsproxy.io/?${encodeURIComponent(CSV_URL)}`,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(CSV_URL)}`,
-  ];
-
-  for (const url of proxies) {
-    try {
-      const r = await fetch(url);
-      if (!r.ok) continue;
-      const text = await r.text();
-      const parsed = parseCsv(text);
-      if (!parsed.length) continue;
-      tableData = parsed;
-      setStatus(`${tableData.length} activities loaded from Google Sheets`);
-      renderTable();
-      renderChart();
-      return;
-    } catch { /* try next proxy */ }
-  }
-
-  // All proxies failed — use embedded seed
   tableData = SEED.map(r => ({...r}));
-  setStatus(`${tableData.length} activities loaded (using built-in data)`);
+  setStatus(`${tableData.length} activities loaded`);
   renderTable();
   renderChart();
 }
@@ -539,7 +525,7 @@ function renderTable() {
     const effortSlider = document.createElement("input");
     effortSlider.type = "range";
     effortSlider.className = "impact-slider";
-    effortSlider.min = 0; effortSlider.max = 100; effortSlider.step = 5;
+    effortSlider.min = 0; effortSlider.max = 100; effortSlider.step = 1;
     effortSlider.value = row.effort;
     effortSlider.dataset.cat = row.category;
 
@@ -569,7 +555,7 @@ function renderTable() {
     const slider = document.createElement("input");
     slider.type = "range";
     slider.className = "impact-slider";
-    slider.min = 0; slider.max = 100; slider.step = 5;
+    slider.min = 0; slider.max = 100; slider.step = 1;
     slider.value = row.impact;
     slider.dataset.cat = row.category;
 
@@ -702,8 +688,8 @@ function renderChart() {
       const newCy = Math.max(0, Math.min(h, +d3.select(this).attr("cy") + event.dy * ratio));
       d3.select(this).attr("cx", newCx).attr("cy", newCy);
 
-      const newEffort = snap5(Math.round(x.invert(newCx)));
-      const newImpact = snap5(Math.round(Math.max(0, Math.min(100, y.invert(newCy)))));
+      const newEffort = Math.round(x.invert(newCx));
+      const newImpact = Math.round(Math.max(0, Math.min(100, y.invert(newCy))));
 
       d.effort = newEffort;
       d.impact = newImpact;
