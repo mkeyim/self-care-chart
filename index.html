@@ -326,9 +326,9 @@
       <thead>
         <tr>
           <th style="min-width:220px">Activity</th>
-          <th style="min-width:180px">Effort to Self</th>
+          <th style="min-width:180px">Level of Effort</th>
           <th style="min-width:140px">Category</th>
-          <th class="th-impact">Impact Score</th>
+          <th class="th-impact">Impact to Well-being</th>
           <th style="width:40px"></th>
         </tr>
       </thead>
@@ -344,7 +344,7 @@
 <div id="legend-tip"></div>
 
 <script>
-const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu-6zAEwtaTzg368FCKiretaHK5zvXtF0qLNv0YH3jFcYSlOV64-tndLyhiDwK3QNXTV1KVS_1Xwe0/pub?gid=743512086&single=true&output=csv";
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu-6zAEwtaTzg368FCKiretaHK5zvXtF0qLNv0YH3jFcYSlOV64-tndLyhiDwK3QNXTV1KVS_1Xwe0/pub?gid=0&single=true&output=csv";
 
 const COLORS = { Body:"#7aac8f", Mind:"#6e9abf", Spirit:"#c9a84c", Heart:"#c94c5a" };
 const CATS   = ["Body","Mind","Spirit","Heart"];
@@ -433,17 +433,31 @@ function parseCsv(text) {
 // ── LOAD ──
 async function loadData() {
   setStatus("Fetching from Google Sheets…");
-  try {
-    const r = await fetch(CSV_URL);
-    if (!r.ok) throw 0;
-    const parsed = parseCsv(await r.text());
-    if (!parsed.length) throw 0;
-    tableData = parsed;
-    setStatus(`${tableData.length} activities loaded from Google Sheets`);
-  } catch {
-    tableData = SEED.map(r => ({...r}));
-    setStatus(`${tableData.length} activities loaded (embedded data)`);
+
+  // Try fetching via a CORS proxy, then fall back to embedded seed data
+  const proxies = [
+    `https://corsproxy.io/?${encodeURIComponent(CSV_URL)}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(CSV_URL)}`,
+  ];
+
+  for (const url of proxies) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) continue;
+      const text = await r.text();
+      const parsed = parseCsv(text);
+      if (!parsed.length) continue;
+      tableData = parsed;
+      setStatus(`${tableData.length} activities loaded from Google Sheets`);
+      renderTable();
+      renderChart();
+      return;
+    } catch { /* try next proxy */ }
   }
+
+  // All proxies failed — use embedded seed
+  tableData = SEED.map(r => ({...r}));
+  setStatus(`${tableData.length} activities loaded (using built-in data)`);
   renderTable();
   renderChart();
 }
