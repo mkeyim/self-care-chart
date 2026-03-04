@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wellness Activity Explorer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <style>
+    :root {
+      --cream: #f9f5f0;
+      --warm-white: #fdfbf8;
+      --ink: #1a1714;
+      --muted: #8a8278;
+      --border: #e8e0d5;
+      --body-color: #7aac8f;
+      --mind-color: #6e9abf;
+      --spirit-color: #c9a84c;
+      --heart-color: #c94c5a;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--cream);
+      color: var(--ink);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 300;
+      min-height: 100vh;
+    }
+
+    /* ── NAV ── */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 64px;
+      border-bottom: 1px solid var(--border);
+      background: var(--warm-white);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .nav-brand { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-weight: 400; padding: 18px 0; }
+    .nav-brand em { font-style: italic; }
+    .nav-tabs { display: flex; }
+    .nav-tab {
+      padding: 20px 28px;
+      font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500;
+      color: var(--muted); cursor: pointer; border: none; border-bottom: 2px solid transparent;
+      background: none; font-family: 'DM Sans', sans-serif; transition: all 0.2s ease; user-select: none;
+    }
+    .nav-tab:hover { color: var(--ink); }
+    .nav-tab.active { color: var(--ink); border-bottom-color: var(--ink); }
+
+    /* ── PAGES ── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── CHART PAGE ── */
+    .chart-header {
+      padding: 40px 64px 28px;
+      display: flex; align-items: flex-end; justify-content: space-between; gap: 32px;
+    }
+    .chart-header h2 { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 300; line-height: 1.1; }
+    .chart-header h2 em { font-style: italic; }
+    .chart-header p { margin-top: 8px; font-size: 0.82rem; color: var(--muted); max-width: 380px; line-height: 1.6; }
+
+    .legend { display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+    .legend-item {
+      display: flex; align-items: center; gap: 7px; cursor: pointer;
+      padding: 5px 13px; border-radius: 20px; border: 1.5px solid transparent;
+      transition: all 0.2s ease; font-size: 0.75rem; letter-spacing: 0.06em;
+      text-transform: uppercase; font-weight: 500; user-select: none;
+    }
+    .legend-item:hover { opacity: 0.8; }
+    .legend-item.active { border-color: currentColor; }
+    .legend-item.dimmed { opacity: 0.3; }
+    .legend-item[data-cat="Body"]   { color: var(--body-color); }
+    .legend-item[data-cat="Mind"]   { color: var(--mind-color); }
+    .legend-item[data-cat="Spirit"] { color: var(--spirit-color); }
+    .legend-item[data-cat="Heart"]  { color: var(--heart-color); }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    .chart-main { padding: 0 64px 64px; }
+    #chart-container { background: var(--warm-white); border: 1px solid var(--border); border-radius: 4px; }
+
+    svg { display: block; width: 100%; }
+    .axis line, .axis path { stroke: var(--border); stroke-width: 1; }
+    .axis text { fill: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 11px; }
+    .axis-label { fill: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; }
+    .grid line { stroke: var(--border); stroke-width: 0.5; stroke-dasharray: 3,4; }
+    .grid path { stroke: none; }
+    .dot { cursor: grab; }
+    .dot.dragging { cursor: grabbing; }
+    .drag-label { pointer-events: none; font-family: 'DM Sans', sans-serif; font-size: 11px; fill: var(--ink); font-weight: 500; }
+
+    #tooltip {
+      position: fixed; background: var(--warm-white); border: 1px solid var(--border);
+      border-radius: 6px; padding: 14px 18px; pointer-events: none; opacity: 0;
+      transition: opacity 0.15s ease; box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      max-width: 220px; z-index: 200;
+    }
+    #tooltip.visible { opacity: 1; }
+    #tooltip .tt-activity { font-family: 'Cormorant Garamond', serif; font-size: 1.05rem; font-weight: 600; color: var(--ink); line-height: 1.3; margin-bottom: 10px; }
+    #tooltip .tt-cat { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 500; margin-bottom: 10px; }
+    #tooltip .tt-row { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+    #tooltip .tt-row span:last-child { font-weight: 500; color: var(--ink); }
+    #tooltip .tt-divider { height: 1px; background: var(--border); margin: 8px 0; }
+    #tooltip .tt-multi-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 8px; font-weight: 500; }
+    #tooltip .tt-cluster-item { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+    #tooltip .tt-cluster-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    #tooltip .tt-cluster-name { font-size: 0.82rem; color: var(--ink); flex: 1; line-height: 1.3; }
+    #tooltip .tt-cluster-cat { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 500; flex-shrink: 0; }
+
+    .data-source { margin-top: 16px; font-size: 0.75rem; color: var(--muted); }
+    .data-source a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+
+    /* ── DATA PAGE ── */
+    .data-header {
+      padding: 40px 64px 28px;
+      display: flex; align-items: flex-end; justify-content: space-between; gap: 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    .data-header h2 { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 300; }
+    .data-header h2 em { font-style: italic; }
+    .data-header p { margin-top: 8px; font-size: 0.82rem; color: var(--muted); max-width: 420px; line-height: 1.6; }
+    .data-actions { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+
+    .btn {
+      padding: 9px 20px; border-radius: 3px; font-size: 0.78rem; font-family: 'DM Sans', sans-serif;
+      letter-spacing: 0.06em; text-transform: uppercase; font-weight: 500; cursor: pointer; transition: all 0.15s ease;
+    }
+    .btn-primary { background: var(--ink); color: var(--cream); border: 1.5px solid var(--ink); }
+    .btn-primary:hover { opacity: 0.75; }
+    .btn-ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--ink); }
+    .btn-danger { background: transparent; color: #c4876e; border: 1.5px solid transparent; padding: 5px 9px; font-size: 0.75rem; border-radius: 3px; font-family: 'DM Sans', sans-serif; cursor: pointer; }
+    .btn-danger:hover { border-color: #c4876e; }
+
+    .status-bar {
+      padding: 10px 64px; font-size: 0.75rem; color: var(--muted); letter-spacing: 0.03em;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--body-color); flex-shrink: 0; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* ── TABLE ── */
+    .table-wrap { padding: 24px 64px 12px; overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; background: var(--warm-white); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+    thead tr { border-bottom: 2px solid var(--border); }
+    thead th {
+      padding: 13px 16px; text-align: left; font-size: 0.72rem;
+      letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500; color: var(--muted); white-space: nowrap;
+    }
+    thead th.th-impact { text-align: left; min-width: 200px; }
+
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--cream); }
+    tbody td { padding: 8px 16px; font-size: 0.85rem; vertical-align: middle; }
+
+    /* Editable text cells */
+    .cell-text {
+      outline: none; border-radius: 3px; display: inline-block;
+      padding: 4px 7px; min-width: 36px; transition: background 0.15s;
+      font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 300; color: var(--ink);
+    }
+    .cell-text:focus { background: var(--cream); box-shadow: 0 0 0 2px var(--border); }
+    .cell-name { min-width: 200px; }
+    .cell-effort { min-width: 50px; text-align: center; }
+
+    /* Category dropdown */
+    .cat-select {
+      appearance: none; -webkit-appearance: none;
+      border: 1.5px solid var(--border); border-radius: 20px;
+      padding: 4px 28px 4px 12px; font-family: 'DM Sans', sans-serif;
+      font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase;
+      font-weight: 500; cursor: pointer; background: var(--warm-white);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a8278' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center;
+      transition: border-color 0.15s; outline: none;
+    }
+    .cat-select:focus { border-color: var(--ink); }
+    .cat-select[data-cat="Body"]   { border-color: var(--body-color);   color: var(--body-color);   background-color: #eef6f1; }
+    .cat-select[data-cat="Mind"]   { border-color: var(--mind-color);   color: var(--mind-color);   background-color: #eaf2f9; }
+    .cat-select[data-cat="Spirit"] { border-color: var(--spirit-color); color: var(--spirit-color); background-color: #f9f4e3; }
+    .cat-select[data-cat="Heart"]  { border-color: var(--heart-color);  color: var(--heart-color);  background-color: #faeaec; }
+
+    /* Impact slider cell */
+    .slider-cell { display: flex; align-items: center; gap: 10px; min-width: 200px; }
+
+    .impact-slider {
+      -webkit-appearance: none; appearance: none;
+      flex: 1; height: 4px; border-radius: 2px;
+      background: var(--border); outline: none; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .impact-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--ink); cursor: grab; border: 2px solid white;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+    .impact-slider::-moz-range-thumb {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--ink); cursor: grab; border: 2px solid white;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+    .impact-slider[data-cat="Body"]::-webkit-slider-thumb   { background: var(--body-color); }
+    .impact-slider[data-cat="Mind"]::-webkit-slider-thumb   { background: var(--mind-color); }
+    .impact-slider[data-cat="Spirit"]::-webkit-slider-thumb { background: var(--spirit-color); }
+    .impact-slider[data-cat="Heart"]::-webkit-slider-thumb  { background: var(--heart-color); }
+    .impact-slider[data-cat="Body"]::-moz-range-thumb   { background: var(--body-color); }
+    .impact-slider[data-cat="Mind"]::-moz-range-thumb   { background: var(--mind-color); }
+    .impact-slider[data-cat="Spirit"]::-moz-range-thumb { background: var(--spirit-color); }
+    .impact-slider[data-cat="Heart"]::-moz-range-thumb  { background: var(--heart-color); }
+
+    .impact-value {
+      font-size: 0.8rem; font-weight: 500; color: var(--ink);
+      min-width: 26px; text-align: right;
+    }
+
+    .add-row-bar { padding: 12px 64px 48px; }
+    .add-row-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 10px 20px; border: 1.5px dashed var(--border); border-radius: 3px;
+      background: transparent; color: var(--muted); font-family: 'DM Sans', sans-serif;
+      font-size: 0.8rem; cursor: pointer; transition: all 0.15s; width: 100%; letter-spacing: 0.04em;
+    }
+    .add-row-btn:hover { border-color: var(--ink); color: var(--ink); }
+
+    /* Keyboard hint */
+    .kbd-hint {
+      padding: 6px 64px 0;
+      font-size: 0.72rem; color: var(--muted); letter-spacing: 0.03em;
+    }
+    kbd {
+      display: inline-block; padding: 1px 5px; border: 1px solid var(--border);
+      border-radius: 3px; font-size: 0.68rem; font-family: monospace;
+      background: var(--warm-white); color: var(--muted);
+    }
+
+    @media (max-width: 768px) {
+      nav, .chart-header, .chart-main, .data-header, .table-wrap, .add-row-bar, .status-bar, .kbd-hint { padding-left: 24px; padding-right: 24px; }
+      .chart-header, .data-header { flex-direction: column; align-items: flex-start; }
+      .legend { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">Wellness <em>Activity</em> Explorer</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-page="chart">Chart</button>
+    <button class="nav-tab" data-page="data">Data</button>
+  </div>
+</nav>
+
+<!-- CHART PAGE -->
+<div class="page active" id="page-chart">
+  <div class="chart-header">
+    <div>
+      <h2>Effort vs. <em>Impact</em></h2>
+      <p>Each dot is an activity coloured by wellness category. <strong>Drag</strong> any dot to adjust its values — the data tab updates live.</p>
+    </div>
+    <div class="legend" id="legend"></div>
+  </div>
+  <div class="chart-main">
+    <div id="chart-container"></div>
+    <p class="data-source">Data from <a href="https://docs.google.com/spreadsheets/d/18PsM9i4UcTwwKs0Cm21ezxd7kGx3OkXn2YI-ykt0K4c/" target="_blank">Google Sheets</a> — edit values in the <strong>Data</strong> tab to update the chart.</p>
+  </div>
+</div>
+
+<!-- DATA PAGE -->
+<div class="page" id="page-data">
+  <div class="data-header">
+    <div>
+      <h2><em>Activity</em> Data</h2>
+      <p>Each activity belongs to one wellness category. Use <kbd>Tab</kbd> to move between cells, <kbd>Shift+Tab</kbd> to go back. Sliders snap to increments of 5.</p>
+    </div>
+    <div class="data-actions">
+      <button class="btn btn-ghost" id="btn-reload">↻ Reload from Sheet</button>
+      <button class="btn btn-primary" id="btn-update-chart">Update Chart</button>
+    </div>
+  </div>
+  <div class="status-bar">
+    <div class="status-dot"></div>
+    <span id="status-text">Loading…</span>
+  </div>
+  <div class="table-wrap">
+    <table id="data-table">
+      <thead>
+        <tr>
+          <th style="min-width:220px">Activity</th>
+          <th style="min-width:180px">Effort</th>
+          <th style="min-width:140px">Category</th>
+          <th class="th-impact">Impact Score</th>
+          <th style="width:40px"></th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+  <div class="add-row-bar">
+    <button class="add-row-btn" id="btn-add-row">＋ Add Activity</button>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu-6zAEwtaTzg368FCKiretaHK5zvXtF0qLNv0YH3jFcYSlOV64-tndLyhiDwK3QNXTV1KVS_1Xwe0/pub?gid=743512086&single=true&output=csv";
+
+const COLORS = { Body:"#7aac8f", Mind:"#6e9abf", Spirit:"#c9a84c", Heart:"#c94c5a" };
+const CATS   = ["Body","Mind","Spirit","Heart"];
+
+// Flattened seed: one row = one activity with ONE category
+const SEED = [
+  {activity:"Brush the Cat",                    effort:5,  category:"Body",   impact:10},
+  {activity:"Breathing exercise",               effort:10, category:"Spirit", impact:10},
+  {activity:"Go sit outside",                   effort:10, category:"Spirit", impact:5},
+  {activity:"Go for a garden walk",             effort:10, category:"Mind",   impact:0},
+  {activity:"Do a hair mask / oil",             effort:15, category:"Mind",   impact:0},
+  {activity:"Play piano",                       effort:15, category:"Spirit", impact:5},
+  {activity:"Pick a bouquet of flowers",        effort:15, category:"Mind",   impact:5},
+  {activity:"Play video games",                 effort:15, category:"Mind",   impact:0},
+  {activity:"Put on a nice outfit",             effort:20, category:"Spirit", impact:10},
+  {activity:"Watch a funny movie",              effort:20, category:"Heart",  impact:5},
+  {activity:"Go for a walk",                    effort:20, category:"Spirit", impact:5},
+  {activity:"Take a shower",                    effort:20, category:"Mind",   impact:0},
+  {activity:"Practice positive self talk",      effort:10, category:"Spirit", impact:5},
+  {activity:"Go out to eat",                    effort:25, category:"Mind",   impact:5},
+  {activity:"Stretch",                          effort:25, category:"Spirit", impact:5},
+  {activity:"Read a book",                      effort:25, category:"Mind",   impact:5},
+  {activity:"Make a nutritious salad",          effort:25, category:"Body",   impact:20},
+  {activity:"Tidy your spaces",                 effort:25, category:"Mind",   impact:5},
+  {activity:"Get specialty groceries",          effort:30, category:"Spirit", impact:5},
+  {activity:"Spend quality time with loved one",effort:30, category:"Heart",  impact:60},
+  {activity:"Talk to therapist",                effort:35, category:"Mind",   impact:5},
+  {activity:"Do a puzzle",                      effort:30, category:"Mind",   impact:0},
+  {activity:"Take a nap",                       effort:30, category:"Body",   impact:25},
+  {activity:"Do a yoga class",                  effort:35, category:"Spirit", impact:5},
+  {activity:"Knit something small",             effort:35, category:"Mind",   impact:5},
+  {activity:"Go to a farmers market",           effort:40, category:"Spirit", impact:10},
+  {activity:"Make your favourite meal",         effort:45, category:"Mind",   impact:0},
+  {activity:"Get a haircut/facial/treatment",   effort:45, category:"Spirit", impact:5},
+  {activity:"Get a massage",                    effort:55, category:"Body",   impact:30},
+  {activity:"Go out to dinner with a friend",   effort:55, category:"Heart",  impact:40},
+  {activity:"Have a picnic",                    effort:60, category:"Spirit", impact:35},
+  {activity:"Do a strength workout",            effort:60, category:"Body",   impact:50},
+  {activity:"Go for an indoor cycle",           effort:60, category:"Body",   impact:55},
+  {activity:"Try a new workout class",          effort:65, category:"Body",   impact:65},
+  {activity:"Go to an event/movie",             effort:65, category:"Spirit", impact:25},
+  {activity:"Cook a recipe you've never tried", effort:65, category:"Mind",   impact:5},
+  {activity:"Sign up for a new craft class",    effort:70, category:"Spirit", impact:35},
+  {activity:"Go for a run",                     effort:70, category:"Body",   impact:70},
+  {activity:"Plan a weekend away",              effort:75, category:"Spirit", impact:65},
+  {activity:"Go for a hike",                    effort:75, category:"Body",   impact:55},
+  {activity:"Go to the Spa",                    effort:75, category:"Heart",  impact:60},
+  {activity:"Take PTO",                         effort:80, category:"Body",   impact:70},
+  {activity:"Try a new sport",                  effort:80, category:"Body",   impact:25},
+];
+
+let tableData = [];
+let activeCategories = new Set(CATS);
+let chartReady = false;
+
+// ── HELPERS ──
+function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function setStatus(msg) { document.getElementById("status-text").textContent = msg; }
+
+function snap5(n) { return Math.round(n / 5) * 5; }
+
+function parseCsv(text) {
+  const rows = d3.csvParse(text);
+  const out = [];
+  rows.forEach(r => {
+    const activity = r["Activity"] || Object.values(r)[0] || "";
+    if (!activity) return;
+    const effort = snap5(+r["Level of Effort"] || 0);
+    for (const cat of CATS) {
+      const val = snap5(+r[cat]);
+      if (val > 0) {
+        out.push({ activity, effort, category: cat, impact: val });
+        return;
+      }
+    }
+    out.push({ activity, effort, category: "Body", impact: 0 });
+  });
+  return out;
+}
+
+// ── LOAD ──
+async function loadData() {
+  setStatus("Fetching from Google Sheets…");
+  try {
+    const r = await fetch(CSV_URL);
+    if (!r.ok) throw 0;
+    const parsed = parseCsv(await r.text());
+    if (!parsed.length) throw 0;
+    tableData = parsed;
+    setStatus(`${tableData.length} activities loaded from Google Sheets`);
+  } catch {
+    tableData = SEED.map(r => ({...r}));
+    setStatus(`${tableData.length} activities loaded (embedded data)`);
+  }
+  renderTable();
+  renderChart();
+}
+
+// ── TABLE ──
+// All focusable cells per row, in tab order: name, effort, category-select, slider
+// Tab/Shift+Tab navigates across rows too
+
+function getFocusables() {
+  return Array.from(document.querySelectorAll(
+    '#table-body .cell-text, #table-body .cat-select, #table-body .impact-slider'
+  ));
+}
+
+function handleTabKey(e, currentEl) {
+  if (e.key !== 'Tab') return;
+  e.preventDefault();
+  const all = getFocusables();
+  const idx = all.indexOf(currentEl);
+  if (idx === -1) return;
+  const next = e.shiftKey ? all[idx - 1] : all[idx + 1];
+  if (next) {
+    next.focus();
+    // Select text content if it's a contenteditable
+    if (next.isContentEditable) {
+      const range = document.createRange();
+      range.selectNodeContents(next);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  }
+}
+
+function renderTable() {
+  const tbody = document.getElementById("table-body");
+  tbody.innerHTML = "";
+
+  tableData.forEach((row, i) => {
+    const tr = document.createElement("tr");
+    tr.dataset.i = i;
+
+    // ── Activity name cell ──
+    const tdName = document.createElement("td");
+    const nameEl = document.createElement("span");
+    nameEl.className = "cell-text cell-name";
+    nameEl.contentEditable = "true";
+    nameEl.textContent = row.activity;
+    nameEl.addEventListener("blur", () => {
+      tableData[i].activity = nameEl.textContent.trim();
+      triggerChartUpdate();
+    });
+    nameEl.addEventListener("keydown", e => {
+      if (e.key === "Enter") { e.preventDefault(); nameEl.blur(); }
+      handleTabKey(e, nameEl);
+    });
+    tdName.appendChild(nameEl);
+    tr.appendChild(tdName);
+
+    // ── Category dropdown (declared first so effort slider can reference it) ──
+    const tdCat = document.createElement("td");
+    const select = document.createElement("select");
+    select.className = "cat-select";
+    select.dataset.cat = row.category;
+    CATS.forEach(cat => {
+      const opt = document.createElement("option");
+      opt.value = cat;
+      opt.textContent = cat;
+      if (cat === row.category) opt.selected = true;
+      select.appendChild(opt);
+    });
+    select.addEventListener("keydown", e => handleTabKey(e, select));
+
+    // ── Effort cell (slider) ──
+    const tdEffort = document.createElement("td");
+    const effortWrap = document.createElement("div");
+    effortWrap.className = "slider-cell";
+
+    const effortSlider = document.createElement("input");
+    effortSlider.type = "range";
+    effortSlider.className = "impact-slider";
+    effortSlider.min = 0; effortSlider.max = 100; effortSlider.step = 5;
+    effortSlider.value = row.effort;
+    effortSlider.dataset.cat = row.category;
+
+    const effortLabel = document.createElement("span");
+    effortLabel.className = "impact-value";
+    effortLabel.textContent = row.effort;
+
+    effortSlider.addEventListener("input", () => {
+      const v = +effortSlider.value;
+      tableData[i].effort = v;
+      effortLabel.textContent = v;
+      patchChartDot(i);
+    });
+    effortSlider.addEventListener("change", () => triggerChartUpdate());
+    effortSlider.addEventListener("keydown", e => handleTabKey(e, effortSlider));
+
+    effortWrap.appendChild(effortSlider);
+    effortWrap.appendChild(effortLabel);
+    tdEffort.appendChild(effortWrap);
+    tr.appendChild(tdEffort);
+
+    // ── Impact slider ──
+    const tdImpact = document.createElement("td");
+    const sliderWrap = document.createElement("div");
+    sliderWrap.className = "slider-cell";
+
+    const slider = document.createElement("input");
+    slider.type = "range";
+    slider.className = "impact-slider";
+    slider.min = 0; slider.max = 100; slider.step = 5;
+    slider.value = row.impact;
+    slider.dataset.cat = row.category;
+
+    const valLabel = document.createElement("span");
+    valLabel.className = "impact-value";
+    valLabel.textContent = row.impact;
+
+    slider.addEventListener("input", () => {
+      const v = +slider.value;
+      tableData[i].impact = v;
+      valLabel.textContent = v;
+      patchChartDot(i);
+    });
+    slider.addEventListener("change", () => triggerChartUpdate());
+    slider.addEventListener("keydown", e => handleTabKey(e, slider));
+
+    sliderWrap.appendChild(slider);
+    sliderWrap.appendChild(valLabel);
+    tdImpact.appendChild(sliderWrap);
+
+    // Wire up category dropdown change (now that both sliders exist)
+    select.addEventListener("change", () => {
+      tableData[i].category = select.value;
+      select.dataset.cat = select.value;
+      effortSlider.dataset.cat = select.value;
+      slider.dataset.cat = select.value;
+      triggerChartUpdate();
+    });
+    tdCat.appendChild(select);
+
+    // Append in correct visual order: name, effort, category, impact, delete
+    tr.appendChild(tdCat);
+    tr.appendChild(tdImpact);
+    const tdDel = document.createElement("td");
+    const delBtn = document.createElement("button");
+    delBtn.className = "btn btn-danger";
+    delBtn.textContent = "✕";
+    delBtn.addEventListener("click", () => {
+      tableData.splice(i, 1);
+      renderTable();
+      triggerChartUpdate();
+    });
+    tdDel.appendChild(delBtn);
+    tr.appendChild(tdDel);
+
+    tbody.appendChild(tr);
+  });
+}
+
+// ── CHART ──
+function renderChart() {
+  const container = document.getElementById("chart-container");
+  container.innerHTML = "";
+  chartReady = false;
+
+  if (!tableData.length) return;
+
+  const W = container.clientWidth || 900;
+  const m = { top:40, right:44, bottom:60, left:60 };
+  const w = W - m.left - m.right;
+  const h = Math.min(520, window.innerHeight * 0.54) - m.top - m.bottom;
+  const scaleRatio = () => W / container.getBoundingClientRect().width;
+  const DOT_R = 7;
+
+  const svg = d3.select("#chart-container").append("svg")
+    .attr("viewBox", `0 0 ${W} ${h+m.top+m.bottom}`)
+    .attr("preserveAspectRatio","xMidYMid meet");
+
+  const g = svg.append("g").attr("transform",`translate(${m.left},${m.top})`);
+
+  const xMax = Math.max(d3.max(tableData, d=>d.effort)+8, 90);
+  const yMax = Math.max(d3.max(tableData, d=>d.impact)+8, 70);
+
+  const x = d3.scaleLinear().domain([0, xMax]).range([0, w]);
+  const y = d3.scaleLinear().domain([0, yMax]).range([h, 0]);
+
+  // Grid
+  g.append("g").attr("class","grid").attr("transform",`translate(0,${h})`)
+    .call(d3.axisBottom(x).ticks(8).tickSize(-h).tickFormat(""));
+  g.append("g").attr("class","grid")
+    .call(d3.axisLeft(y).ticks(6).tickSize(-w).tickFormat(""));
+
+  // Axes
+  g.append("g").attr("class","axis").attr("transform",`translate(0,${h})`)
+    .call(d3.axisBottom(x).ticks(8).tickSize(4)).select(".domain").attr("stroke","var(--border)");
+  g.append("g").attr("class","axis")
+    .call(d3.axisLeft(y).ticks(6).tickSize(4)).select(".domain").attr("stroke","var(--border)");
+
+  g.append("text").attr("class","axis-label").attr("x",w/2).attr("y",h+48)
+    .attr("text-anchor","middle").text("Level of Effort");
+  g.append("text").attr("class","axis-label").attr("transform","rotate(-90)")
+    .attr("x",-h/2).attr("y",-48).attr("text-anchor","middle").text("Impact to Self");
+
+  const tip = document.getElementById("tooltip");
+  let isDragging = false;
+  const dragLabel = g.append("text").attr("class","drag-label").attr("opacity",0);
+
+  // ── COLLISION SIMULATION ──
+  // Give each datum a simulated x/y starting from true scale position
+  const simData = tableData.map((d, i) => ({
+    ...d,
+    _i: i,
+    tx: x(d.effort),   // true x
+    ty: y(d.impact),   // true y
+    x:  x(d.effort),
+    y:  y(d.impact),
+  }));
+
+  const simulation = d3.forceSimulation(simData)
+    .force("x", d3.forceX(d => d.tx).strength(0.9))
+    .force("y", d3.forceY(d => d.ty).strength(0.9))
+    .force("collide", d3.forceCollide(DOT_R + 2).strength(1))
+    .stop();
+
+  // Run synchronously — 120 ticks is plenty for this dataset size
+  for (let i = 0; i < 120; i++) simulation.tick();
+
+  // ── DRAG ──
+  const drag = d3.drag()
+    .on("start", function(event, d) {
+      isDragging = true;
+      tip.classList.remove("visible");
+      d3.select(this).classed("dragging",true).raise()
+        .transition().duration(80).attr("r",11).attr("opacity",1);
+      dragLabel.attr("opacity",1);
+    })
+    .on("drag", function(event, d) {
+      const ratio = scaleRatio();
+      const newCx = Math.max(0, Math.min(w, +d3.select(this).attr("cx") + event.dx * ratio));
+      const newCy = Math.max(0, Math.min(h, +d3.select(this).attr("cy") + event.dy * ratio));
+      d3.select(this).attr("cx", newCx).attr("cy", newCy);
+
+      const newEffort = snap5(Math.round(x.invert(newCx)));
+      const newImpact = snap5(Math.round(Math.max(0, Math.min(100, y.invert(newCy)))));
+
+      d.effort = newEffort;
+      d.impact = newImpact;
+
+      const idx = tableData.findIndex(r => r.activity === d.activity && r.category === d.category);
+      if (idx >= 0) {
+        tableData[idx].effort = newEffort;
+        tableData[idx].impact = newImpact;
+        patchTableRow(idx, newEffort, newImpact);
+      }
+
+      dragLabel.attr("x", newCx+12).attr("y", newCy-10)
+        .text(`effort ${newEffort} · impact ${newImpact}`);
+    })
+    .on("end", function(event, d) {
+      isDragging = false;
+      d3.select(this).classed("dragging",false)
+        .transition().duration(100).attr("r", DOT_R)
+        .attr("opacity", activeCategories.has(d.category) ? 0.82 : 0.06);
+      dragLabel.transition().duration(200).attr("opacity",0);
+      setStatus(`"${d.activity}" → effort ${d.effort}, impact ${d.impact}`);
+    });
+
+  // ── DOTS (positioned by simulation) ──
+  const dots = g.selectAll(".dot").data(simData).enter().append("circle")
+    .attr("class","dot")
+    .attr("cx", d => d.x).attr("cy", d => d.y)
+    .attr("r", 0).attr("opacity", 0)
+    .attr("fill", d => COLORS[d.category])
+    .attr("stroke","white").attr("stroke-width",1.5)
+    .call(drag);
+
+  dots.transition().delay((_,i) => i*10).duration(350)
+    .attr("r", DOT_R)
+    .attr("opacity", d => activeCategories.has(d.category) ? 0.82 : 0.06);
+
+  // ── GROUPED TOOLTIP ──
+  // Find all activities that share the same true (effort, impact) position
+  function getCluster(d) {
+    return tableData.filter(r => r.effort === d.effort && r.impact === d.impact);
+  }
+
+  dots
+    .on("mouseover", function(event, d) {
+      if (isDragging) return;
+      d3.select(this).transition().duration(80).attr("r", DOT_R + 3).attr("opacity", 1);
+
+      const cluster = getCluster(d);
+      const multi = cluster.length > 1;
+
+      const itemsHtml = cluster.map(r => `
+        <div class="tt-cluster-item">
+          <span class="tt-cluster-dot" style="background:${COLORS[r.category]}"></span>
+          <span class="tt-cluster-name">${r.activity}</span>
+          <span class="tt-cluster-cat" style="color:${COLORS[r.category]}">${r.category}</span>
+        </div>`).join("");
+
+      tip.innerHTML = `
+        ${multi ? `<div class="tt-multi-label">${cluster.length} activities here</div>` : ""}
+        ${itemsHtml}
+        <div class="tt-divider"></div>
+        <div class="tt-row"><span>Level of Effort</span><span>${d.effort}</span></div>
+        <div class="tt-row"><span>Impact to Self</span><span>${d.impact}</span></div>`;
+      tip.classList.add("visible");
+      moveTip(event);
+    })
+    .on("mousemove", function(event) { if (!isDragging) moveTip(event); })
+    .on("mouseleave", function(event, d) {
+      if (isDragging) return;
+      d3.select(this).transition().duration(80)
+        .attr("r", DOT_R)
+        .attr("opacity", activeCategories.has(d.category) ? 0.82 : 0.06);
+      tip.classList.remove("visible");
+    });
+
+  function moveTip(e) {
+    tip.style.left = `${Math.min(e.clientX+16, window.innerWidth-240)}px`;
+    tip.style.top  = `${Math.min(e.clientY-10, window.innerHeight-160)}px`;
+  }
+
+  chartReady = true;
+}
+
+// Patch a single dot position without full re-render (called from slider)
+function patchChartDot(rowIdx) {
+  const row = tableData[rowIdx];
+  d3.selectAll(".dot").filter((d,i) => i === rowIdx)
+    .attr("fill", COLORS[row.category])
+    .attr("cx", function() {
+      // Re-use existing scale by recalculating
+      const container = document.getElementById("chart-container");
+      if (!container.querySelector("svg")) return 0;
+      const svg = container.querySelector("svg");
+      const vb = svg.viewBox.baseVal;
+      const m = {left:60, right:44, bottom:60, top:40};
+      const w = vb.width - m.left - m.right;
+      const h = vb.height - m.top - m.bottom;
+      const xMax = Math.max(d3.max(tableData,d=>d.effort)+8,90);
+      const yMax = Math.max(d3.max(tableData,d=>d.impact)+8,70);
+      return (row.effort / xMax) * w;
+    })
+    .attr("cy", function() {
+      const container = document.getElementById("chart-container");
+      if (!container.querySelector("svg")) return 0;
+      const svg = container.querySelector("svg");
+      const vb = svg.viewBox.baseVal;
+      const m = {left:60, right:44, bottom:60, top:40};
+      const h = vb.height - m.top - m.bottom;
+      const yMax = Math.max(d3.max(tableData,d=>d.impact)+8,70);
+      return h - (row.impact / yMax) * h;
+    });
+}
+
+// Patch table row DOM from drag (no full re-render)
+function patchTableRow(idx, effort, impact) {
+  const tr = document.querySelector(`#table-body tr[data-i="${idx}"]`);
+  if (!tr) return;
+  const effortSliders = tr.querySelectorAll('.impact-slider');
+  // First slider is effort, second is impact
+  if (effortSliders[0]) { effortSliders[0].value = Math.round(effort / 5) * 5; }
+  const effortLabels = tr.querySelectorAll('.impact-value');
+  if (effortLabels[0]) effortLabels[0].textContent = Math.round(effort / 5) * 5;
+  if (effortSliders[1]) { effortSliders[1].value = Math.min(100, Math.round(impact / 5) * 5); }
+  if (effortLabels[1]) effortLabels[1].textContent = Math.min(100, Math.round(impact / 5) * 5);
+}
+
+function triggerChartUpdate() {
+  renderChart();
+  updateLegendState();
+  setStatus(`${tableData.length} activities`);
+}
+
+// ── LEGEND ──
+function buildLegend() {
+  const el = document.getElementById("legend");
+  CATS.forEach(cat => {
+    const item = document.createElement("div");
+    item.className = "legend-item active";
+    item.dataset.cat = cat;
+    item.innerHTML = `<div class="legend-dot" style="background:${COLORS[cat]}"></div>${cat}`;
+    item.addEventListener("click", () => {
+      if (activeCategories.has(cat)) {
+        if (activeCategories.size===1) return;
+        activeCategories.delete(cat);
+      } else { activeCategories.add(cat); }
+      updateLegendState();
+      d3.selectAll(".dot").transition().duration(200)
+        .attr("opacity", d => activeCategories.has(d.category)?0.82:0.06);
+    });
+    el.appendChild(item);
+  });
+}
+
+function updateLegendState() {
+  document.querySelectorAll(".legend-item").forEach(el => {
+    el.classList.toggle("active", activeCategories.has(el.dataset.cat));
+    el.classList.toggle("dimmed", !activeCategories.has(el.dataset.cat));
+  });
+}
+
+// ── NAV ──
+document.querySelectorAll(".nav-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".nav-tab").forEach(t=>t.classList.remove("active"));
+    document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById(`page-${tab.dataset.page}`).classList.add("active");
+  });
+});
+
+// ── BUTTONS ──
+document.getElementById("btn-update-chart").addEventListener("click", triggerChartUpdate);
+document.getElementById("btn-reload").addEventListener("click", loadData);
+document.getElementById("btn-add-row").addEventListener("click", () => {
+  tableData.push({ activity: "New Activity", effort: 10, category: "Body", impact: 10 });
+  renderTable();
+  triggerChartUpdate();
+  // Focus the new row's name cell
+  setTimeout(() => {
+    const names = document.querySelectorAll(".cell-name");
+    const last = names[names.length - 1];
+    if (last) {
+      last.focus();
+      const range = document.createRange();
+      range.selectNodeContents(last);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+    }
+  }, 40);
+  setStatus("New row added — Tab through cells to fill in values");
+});
+
+// ── INIT ──
+buildLegend();
+loadData();
+</script>
+</body>
+</html>
