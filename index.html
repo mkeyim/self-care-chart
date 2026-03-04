@@ -120,6 +120,7 @@
     .dot { cursor: grab; }
     .dot.dragging { cursor: grabbing; }
     .drag-label { pointer-events: none; font-family: 'DM Sans', sans-serif; font-size: 11px; fill: var(--ink); font-weight: 500; }
+    .dot-label { pointer-events: none; font-family: 'DM Sans', sans-serif; font-size: 9.5px; font-weight: 400; letter-spacing: 0.01em; }
     .dot-label { pointer-events: none; font-family: 'DM Sans', sans-serif; font-size: 10px; fill: var(--ink); font-weight: 400; letter-spacing: 0.01em; }
 
     #tooltip {
@@ -350,49 +351,49 @@ const CATS   = ["Body","Mind","Spirit","Heart"];
 
 // Flattened seed: one row = one activity with ONE category
 const SEED = [
-  {activity:"Brush the Cat",                    effort:5,  category:"Body",   impact:10},
-  {activity:"Breathing exercise",               effort:10, category:"Spirit", impact:10},
-  {activity:"Go sit outside",                   effort:10, category:"Spirit", impact:5},
-  {activity:"Go for a garden walk",             effort:10, category:"Mind",   impact:0},
-  {activity:"Do a hair mask / oil",             effort:15, category:"Mind",   impact:0},
-  {activity:"Play piano",                       effort:15, category:"Spirit", impact:5},
-  {activity:"Pick a bouquet of flowers",        effort:15, category:"Mind",   impact:5},
-  {activity:"Play video games",                 effort:15, category:"Mind",   impact:0},
-  {activity:"Put on a nice outfit",             effort:20, category:"Spirit", impact:10},
-  {activity:"Watch a funny movie",              effort:20, category:"Heart",  impact:5},
-  {activity:"Go for a walk",                    effort:20, category:"Spirit", impact:5},
-  {activity:"Take a shower",                    effort:20, category:"Mind",   impact:0},
-  {activity:"Practice positive self talk",      effort:10, category:"Spirit", impact:5},
-  {activity:"Go out to eat",                    effort:25, category:"Mind",   impact:5},
-  {activity:"Stretch",                          effort:25, category:"Spirit", impact:5},
-  {activity:"Read a book",                      effort:25, category:"Mind",   impact:5},
-  {activity:"Make a nutritious salad",          effort:25, category:"Body",   impact:20},
-  {activity:"Tidy your spaces",                 effort:25, category:"Mind",   impact:5},
-  {activity:"Get specialty groceries",          effort:30, category:"Spirit", impact:5},
-  {activity:"Spend quality time with loved one",effort:30, category:"Heart",  impact:60},
-  {activity:"Talk to therapist",                effort:35, category:"Mind",   impact:5},
-  {activity:"Do a puzzle",                      effort:30, category:"Mind",   impact:0},
-  {activity:"Take a nap",                       effort:30, category:"Body",   impact:25},
-  {activity:"Do a yoga class",                  effort:35, category:"Spirit", impact:5},
-  {activity:"Knit something small",             effort:35, category:"Mind",   impact:5},
-  {activity:"Go to a farmers market",           effort:40, category:"Spirit", impact:10},
-  {activity:"Make your favourite meal",         effort:45, category:"Mind",   impact:0},
-  {activity:"Get a haircut/facial/treatment",   effort:45, category:"Spirit", impact:5},
-  {activity:"Get a massage",                    effort:55, category:"Body",   impact:30},
-  {activity:"Go out to dinner with a friend",   effort:55, category:"Heart",  impact:40},
-  {activity:"Have a picnic",                    effort:60, category:"Spirit", impact:35},
-  {activity:"Do a strength workout",            effort:60, category:"Body",   impact:50},
-  {activity:"Go for an indoor cycle",           effort:60, category:"Body",   impact:55},
-  {activity:"Try a new workout class",          effort:65, category:"Body",   impact:65},
-  {activity:"Go to an event/movie",             effort:65, category:"Spirit", impact:25},
-  {activity:"Cook a recipe you've never tried", effort:65, category:"Mind",   impact:5},
-  {activity:"Sign up for a new craft class",    effort:70, category:"Spirit", impact:35},
-  {activity:"Go for a run",                     effort:70, category:"Body",   impact:70},
-  {activity:"Plan a weekend away",              effort:75, category:"Spirit", impact:65},
-  {activity:"Go for a hike",                    effort:75, category:"Body",   impact:55},
-  {activity:"Go to the Spa",                    effort:75, category:"Heart",  impact:60},
-  {activity:"Take PTO",                         effort:80, category:"Body",   impact:70},
-  {activity:"Try a new sport",                  effort:80, category:"Body",   impact:25},
+  {activity:"Pet the Cat",        effort:5,  category:"Body",   impact:10},
+  {activity:"Deep Breathing",     effort:10, category:"Spirit", impact:10},
+  {activity:"Sit Outside",        effort:10, category:"Spirit", impact:5},
+  {activity:"Garden Walk",        effort:10, category:"Mind",   impact:0},
+  {activity:"Hair Mask",          effort:15, category:"Mind",   impact:0},
+  {activity:"Play Piano",         effort:15, category:"Spirit", impact:5},
+  {activity:"Pick Flowers",       effort:15, category:"Mind",   impact:5},
+  {activity:"Video Games",        effort:15, category:"Mind",   impact:0},
+  {activity:"Get Dressed Up",     effort:20, category:"Spirit", impact:10},
+  {activity:"Watch Comedy",       effort:20, category:"Heart",  impact:5},
+  {activity:"Take a Walk",        effort:20, category:"Spirit", impact:5},
+  {activity:"Hot Shower",         effort:20, category:"Mind",   impact:0},
+  {activity:"Positive Self Talk", effort:10, category:"Spirit", impact:5},
+  {activity:"Dine Out",           effort:25, category:"Mind",   impact:5},
+  {activity:"Stretch",            effort:25, category:"Spirit", impact:5},
+  {activity:"Read a Book",        effort:25, category:"Mind",   impact:5},
+  {activity:"Nourishing Salad",   effort:25, category:"Body",   impact:20},
+  {activity:"Tidy Up",            effort:25, category:"Mind",   impact:5},
+  {activity:"Specialty Groceries",effort:30, category:"Spirit", impact:5},
+  {activity:"Quality Time",       effort:30, category:"Heart",  impact:60},
+  {activity:"See Therapist",      effort:35, category:"Mind",   impact:5},
+  {activity:"Do Puzzles",         effort:30, category:"Mind",   impact:0},
+  {activity:"Take a Nap",         effort:30, category:"Body",   impact:25},
+  {activity:"Yoga Class",         effort:35, category:"Spirit", impact:5},
+  {activity:"Knit Something",     effort:35, category:"Mind",   impact:5},
+  {activity:"Farmers Market",     effort:40, category:"Spirit", impact:10},
+  {activity:"Favourite Meal",     effort:45, category:"Mind",   impact:0},
+  {activity:"Pamper Treatment",   effort:45, category:"Spirit", impact:5},
+  {activity:"Get a Massage",      effort:55, category:"Body",   impact:30},
+  {activity:"Dinner with Friend", effort:55, category:"Heart",  impact:40},
+  {activity:"Have a Picnic",      effort:60, category:"Spirit", impact:35},
+  {activity:"Strength Workout",   effort:60, category:"Body",   impact:50},
+  {activity:"Indoor Cycle",       effort:60, category:"Body",   impact:55},
+  {activity:"New Workout Class",  effort:65, category:"Body",   impact:65},
+  {activity:"See an Event",       effort:65, category:"Spirit", impact:25},
+  {activity:"Cook New Recipe",    effort:65, category:"Mind",   impact:5},
+  {activity:"Join Craft Class",   effort:70, category:"Spirit", impact:35},
+  {activity:"Go Running",         effort:70, category:"Body",   impact:70},
+  {activity:"Weekend Getaway",    effort:75, category:"Spirit", impact:65},
+  {activity:"Go Hiking",          effort:75, category:"Body",   impact:55},
+  {activity:"Spa Day",            effort:75, category:"Heart",  impact:60},
+  {activity:"Take PTO",           effort:80, category:"Body",   impact:70},
+  {activity:"Try New Sport",      effort:80, category:"Body",   impact:25},
 ];
 
 const BLURBS = {
@@ -709,6 +710,15 @@ function renderChart() {
         .transition().duration(100).attr("r", DOT_R)
         .attr("opacity", activeCategories.has(d.category) ? 0.82 : 0.06);
       dragLabel.transition().duration(200).attr("opacity",0);
+
+      // Move the matching dot-label to sit beside the dot's new position
+      const newCx = +d3.select(this).attr("cx");
+      const newCy = +d3.select(this).attr("cy");
+      g.selectAll(`.dot-label[data-activity="${CSS.escape(d.activity)}"]`)
+        .attr("x", newCx + DOT_R + 4)
+        .attr("y", newCy + 3)
+        .attr("text-anchor", "start");
+
       setStatus(`"${d.activity}" → effort ${d.effort}, impact ${d.impact}`);
     });
 
@@ -763,6 +773,73 @@ function renderChart() {
         .attr("opacity", activeCategories.has(d.category) ? 0.82 : 0.06);
       tip.classList.remove("visible");
     });
+
+  // ── DOT LABELS (collision-aware, using simData positions) ──
+  // Run a second pass: for each dot, find the best non-overlapping label position
+  const labelBoxes = []; // track placed label bounding boxes in SVG px
+
+  function labelOverlaps(box) {
+    return labelBoxes.some(b =>
+      box.x1 < b.x2 + 2 && box.x2 > b.x1 - 2 &&
+      box.y1 < b.y2 + 2 && box.y2 > b.y1 - 2
+    );
+  }
+
+  const LABEL_H_PX = 11;
+  const CHAR_W_PX  = 5.2; // approximate px per char at 10px font
+
+  const labelOffsets = [
+    [DOT_R+4,  0],          // right-middle
+    [DOT_R+4, -LABEL_H_PX],// right-above
+    [DOT_R+4,  LABEL_H_PX],// right-below
+    [-(DOT_R+4), 0],        // left (anchor end)
+    [-(DOT_R+4),-LABEL_H_PX],
+    [-(DOT_R+4), LABEL_H_PX],
+    [0, -(DOT_R+5)],        // above
+    [0,  (DOT_R+10)],       // below
+  ];
+
+  simData.forEach(d => {
+    const labelW = d.activity.length * CHAR_W_PX;
+    let chosen = null;
+
+    for (const [ox, oy] of labelOffsets) {
+      const anchorLeft = ox < 0; // text anchored to the right (end) when offset is left
+      const lx = d.x + ox;
+      const ly = d.y + oy;
+      const bx1 = anchorLeft ? lx - labelW : lx;
+      const box = { x1: bx1, y1: ly - LABEL_H_PX, x2: bx1 + labelW, y2: ly };
+      // keep within plot area
+      if (box.x1 < -10 || box.x2 > w + 10) continue;
+      if (box.y1 < -10 || box.y2 > h + 10) continue;
+      if (!labelOverlaps(box)) {
+        chosen = { lx, ly, anchor: anchorLeft ? "end" : "start", box };
+        break;
+      }
+    }
+
+    if (!chosen) {
+      // fallback: just place to the right, accept overlap
+      const lx = d.x + DOT_R + 4;
+      const ly = d.y;
+      chosen = { lx, ly, anchor: "start", box: { x1: lx, y1: ly - LABEL_H_PX, x2: lx + labelW, y2: ly } };
+    }
+
+    g.append("text")
+      .datum(d)
+      .attr("class", "dot-label")
+      .attr("data-activity", d.activity)
+      .attr("x", chosen.lx)
+      .attr("y", chosen.ly + 3)
+      .attr("text-anchor", chosen.anchor)
+      .text(d.activity)
+      .attr("opacity", 0)
+      .attr("fill", COLORS[d.category])
+      .transition().delay(300).duration(250)
+      .attr("opacity", activeCategories.has(d.category) ? 0.8 : 0.05);
+
+    labelBoxes.push(chosen.box);
+  });
 
   function moveTip(e) {
     tip.style.left = `${Math.min(e.clientX+16, window.innerWidth-240)}px`;
@@ -1063,7 +1140,9 @@ function buildLegend() {
       } else { activeCategories.add(cat); }
       updateLegendState();
       d3.selectAll(".dot").transition().duration(200)
-        .attr("opacity", d => activeCategories.has(d.category)?0.82:0.06);
+        .attr("opacity", d => activeCategories.has(d.category) ? 0.82 : 0.06);
+      d3.selectAll(".dot-label").transition().duration(200)
+        .attr("opacity", d => activeCategories.has(d.category) ? 0.8 : 0.05);
     });
 
     // Blurb tooltip on hover
